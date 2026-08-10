@@ -51,7 +51,7 @@ class MainActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(20), dp(24), dp(20), dp(32))
 
-                    addView(titleView("屏幕平衡"))
+                    addView(titleView("屏衡"))
                     addView(
                         bodyView("自定义连续使用上限。到时会返回桌面，并对触发上限的应用启用五分钟冷静期。"),
                         layoutParams(top = 8, bottom = 20),
@@ -168,7 +168,7 @@ class MainActivity : Activity() {
                         addView(sectionTitle("执行方式"))
                         addView(
                             bodyView(
-                                "到达上限后，屏幕平衡会通过 Shizuku 强制停止触发上限的应用。"
+                                "到达上限后，屏衡会通过 Shizuku 强制停止触发上限的应用。"
                                     + "冷静期内再次打开对应受限页面，会立即再次停止。",
                             ),
                             layoutParams(top = 8),
@@ -192,7 +192,7 @@ class MainActivity : Activity() {
         }
         shizukuStatus.text = when (ShizukuAccess.status(this)) {
             ShizukuStatus.AUTHORIZED -> "Shizuku：已授权，可强制停止前台与后台进程。"
-            ShizukuStatus.NEEDS_PERMISSION -> "Shizuku：等待授权。点击下方按钮并允许屏幕平衡。"
+            ShizukuStatus.NEEDS_PERMISSION -> "Shizuku：等待授权。点击下方按钮并允许屏衡。"
             ShizukuStatus.NOT_RUNNING -> "Shizuku：未运行。点击下方按钮启动后返回。"
             ShizukuStatus.NOT_INSTALLED -> "Shizuku：未安装，无法强制停止其他应用。"
         }

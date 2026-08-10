@@ -6,30 +6,32 @@ import org.junit.Test
 
 class ForegroundComponentParserTest {
     @Test
-    fun parsesTopResumedActivity() {
-        val output = "topResumedActivity=ActivityRecord{abc123 u0 com.tencent.mm/.plugin.finder.ui.FinderHomeAffinityUI t42}"
+    fun parsesTopResumedActivityForClonedUser() {
+        val output = "topResumedActivity=ActivityRecord{abc123 u999 com.tencent.mm/.plugin.finder.ui.FinderHomeAffinityUI t42}"
 
-        val component = ForegroundComponentParser.parse(output)
+        val activity = ForegroundComponentParser.parse(output)
 
+        assertEquals(999, activity?.userId)
         assertEquals(
             "com.tencent.mm/.plugin.finder.ui.FinderHomeAffinityUI",
-            component,
+            activity?.componentName,
         )
-        assertEquals("com.tencent.mm", ForegroundComponentParser.packageName(component!!))
+        assertEquals("com.tencent.mm", activity?.packageName)
         assertEquals(
             "com.tencent.mm.plugin.finder.ui.FinderHomeAffinityUI",
-            ForegroundComponentParser.className(component),
+            activity?.className,
         )
     }
 
     @Test
-    fun parsesResumedActivityFallback() {
+    fun parsesResumedActivityFallbackForMainUser() {
         val output = "ResumedActivity: ActivityRecord{def456 u0 com.ss.android.ugc.aweme/.main.MainActivity t7}"
 
-        assertEquals(
-            "com.ss.android.ugc.aweme/.main.MainActivity",
-            ForegroundComponentParser.parse(output),
-        )
+        val activity = ForegroundComponentParser.parse(output)
+
+        assertEquals(0, activity?.userId)
+        assertEquals("com.ss.android.ugc.aweme", activity?.packageName)
+        assertEquals("com.ss.android.ugc.aweme.main.MainActivity", activity?.className)
     }
 
     @Test

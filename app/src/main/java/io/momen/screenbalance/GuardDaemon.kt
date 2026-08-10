@@ -119,7 +119,7 @@ private class GuardMonitor(
     private val policy = FocusSessionPolicy()
     private var cooldownUntilMillis = configuration.cooldownUntilMillis
     private var session = FocusSession()
-    private var lastForegroundComponent: String? = null
+    private var lastForegroundActivity: ForegroundActivity? = null
 
     fun run() {
         while (true) {
@@ -147,21 +147,21 @@ private class GuardMonitor(
             return
         }
 
-        val component = foregroundComponent() ?: run {
+        val activity = foregroundActivity() ?: run {
             clearSession()
             return
         }
-        if (component != lastForegroundComponent) {
-            lastForegroundComponent = component
-            Log.i(TAG, "Foreground component: $component")
+        if (activity != lastForegroundActivity) {
+            lastForegroundActivity = activity
+            Log.i(
+                TAG,
+                "Foreground activity: user=${activity.userId} component=${activity.componentName}",
+            )
         }
-        val packageName = ForegroundComponentParser.packageName(component) ?: run {
-            clearSession()
-            return
-        }
+        val packageName = activity.packageName
         val pageState = GuardedPageClassifier.classify(
             packageName = packageName,
-            className = ForegroundComponentParser.className(component),
+            className = activity.className,
             isPackageSelected = packageName in configuration.protectedPackages,
         )
         if (pageState != GuardedPageState.GUARDED) {
@@ -170,7 +170,7 @@ private class GuardMonitor(
         }
 
         if (cooldownUntilMillis > nowWallMillis) {
-            forceStop(packageName)
+            forceStop(activity.userId, packageName)
             clearSession()
             return
         }
@@ -188,20 +188,20 @@ private class GuardMonitor(
             is SessionDecision.Tracking -> session = decision.session
             is SessionDecision.TimedOut -> {
                 cooldownUntilMillis = nowWallMillis + FocusGuardPreferences.COOLDOWN_MILLIS
-                forceStop(decision.packageName)
+                forceStop(activity.userId, decision.packageName)
                 clearSession()
             }
         }
     }
 
-    private fun foregroundComponent(): String? =
+    private fun foregroundActivity(): ForegroundActivity? =
         ForegroundComponentParser.parse(
             runCommand(SHELL_PATH, "-c", FOREGROUND_ACTIVITY_COMMAND),
         )
 
-    private fun forceStop(packageName: String) {
-        runCommand(ACTIVITY_MANAGER_PATH, "force-stop", "--user", USER_ID, packageName)
-        Log.i(TAG, "Force-stopped package: $packageName")
+    private fun forceStop(userId: Int, packageName: String) {
+        runCommand(*ActivityManagerCommand.forceStop(userId, packageName))
+        Log.i(TAG, "Force-stopped package: user=$userId package=$packageName")
     }
 
     private fun runCommand(vararg command: String): String {
@@ -224,8 +224,6 @@ private class GuardMonitor(
         const val MONITOR_INTERVAL_MILLIS = 750L
         const val ERROR_BACKOFF_MILLIS = 2_000L
         const val SHELL_PATH = "/system/bin/sh"
-        const val ACTIVITY_MANAGER_PATH = "/system/bin/am"
-        const val USER_ID = "0"
         const val FOREGROUND_ACTIVITY_COMMAND =
             "/system/bin/dumpsys activity activities | " +
                 "/system/bin/grep -m 1 -E 'topResumedActivity=|ResumedActivity:' || true"

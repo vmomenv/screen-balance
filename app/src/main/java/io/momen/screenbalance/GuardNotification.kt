@@ -21,7 +21,7 @@ object GuardNotification {
                     "使用守护",
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = "保持屏幕平衡在后台持续识别受限页面"
+                    description = "保持屏衡在后台持续识别受限页面"
                     setShowBadge(false)
                 },
             )
@@ -37,7 +37,7 @@ object GuardNotification {
         )
         return Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("屏幕平衡正在守护")
+            .setContentTitle("屏衡正在守护")
             .setContentText("可关闭设置界面；后台守护仍会持续运行")
             .setContentIntent(openApp)
             .setOngoing(true)

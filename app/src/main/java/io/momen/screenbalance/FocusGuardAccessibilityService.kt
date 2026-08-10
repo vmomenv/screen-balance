@@ -206,7 +206,7 @@ class FocusGuardAccessibilityService : AccessibilityService() {
                         lastUnavailableNoticeAtMillis = nowMillis
                         Toast.makeText(
                             this,
-                            "无法强制停止应用：请启动 Shizuku 并授权屏幕平衡",
+                            "无法强制停止应用：请启动 Shizuku 并授权屏衡",
                             Toast.LENGTH_LONG,
                         ).show()
                     }
