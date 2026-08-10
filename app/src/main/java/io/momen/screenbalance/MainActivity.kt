@@ -53,7 +53,7 @@ class MainActivity : Activity() {
 
                     addView(titleView("屏幕平衡"))
                     addView(
-                        bodyView("自定义连续使用上限。到时会返回桌面，并对所有已选应用启用五分钟冷静期。"),
+                        bodyView("自定义连续使用上限。到时会返回桌面，并对触发上限的应用启用五分钟冷静期。"),
                         layoutParams(top = 8, bottom = 20),
                     )
 
@@ -148,7 +148,7 @@ class MainActivity : Activity() {
                     addView(card().apply {
                         addView(sectionTitle("受限应用"))
                         addView(
-                            bodyView("这些应用共用同一个连续使用计时；在微信扫码或付款前，请先临时放行。"),
+                            bodyView("这些应用共用连续使用计时；微信仅在识别到视频号页面时计时，聊天、扫码和付款不受限制。"),
                             layoutParams(top = 8, bottom = 8),
                         )
                         FocusGuardPreferences.TARGET_APPS.forEach { target ->
@@ -168,8 +168,8 @@ class MainActivity : Activity() {
                         addView(sectionTitle("执行方式"))
                         addView(
                             bodyView(
-                                "到达上限后，屏幕平衡会通过 Shizuku 强制停止受限应用的前台与后台进程。"
-                                    + "冷静期内发现它们再次运行，会立即再次停止并提示。",
+                                "到达上限后，屏幕平衡会通过 Shizuku 强制停止触发上限的应用。"
+                                    + "冷静期内再次打开对应受限页面，会立即再次停止。",
                             ),
                             layoutParams(top = 8),
                         )

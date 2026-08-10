@@ -94,7 +94,7 @@ class FocusGuardPreferences(context: Context) {
             TargetApp("知乎", "com.zhihu.android"),
             TargetApp("YouTube", "com.google.android.youtube"),
             TargetApp("Instagram", "com.instagram.android"),
-            TargetApp("微信（含视频号）", "com.tencent.mm"),
+            TargetApp("微信视频号（不限制聊天/扫码/付款）", "com.tencent.mm"),
         )
 
         private const val PREFERENCES_NAME = "focus_guard"

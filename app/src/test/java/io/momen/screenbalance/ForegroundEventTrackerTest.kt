@@ -8,46 +8,62 @@ class ForegroundEventTrackerTest {
     private val tracker = ForegroundEventTracker()
 
     @Test
-    fun protectedInteractionIdentifiesForegroundPackage() {
+    fun guardedInteractionIdentifiesForegroundPackage() {
         tracker.record(
             packageName = "tv.danmaku.bili",
             isWindowStateChange = false,
-            isProtected = true,
+            pageState = GuardedPageState.GUARDED,
         )
 
         assertEquals("tv.danmaku.bili", tracker.currentPackage)
     }
 
     @Test
-    fun unrelatedClickDoesNotReplaceForegroundPackage() {
+    fun unrelatedUnknownEventDoesNotReplaceGuardedPage() {
         tracker.record(
             packageName = "tv.danmaku.bili",
             isWindowStateChange = true,
-            isProtected = true,
+            pageState = GuardedPageState.GUARDED,
         )
         tracker.record(
             packageName = "com.android.systemui",
             isWindowStateChange = false,
-            isProtected = false,
+            pageState = GuardedPageState.UNKNOWN,
         )
 
         assertEquals("tv.danmaku.bili", tracker.currentPackage)
     }
 
     @Test
-    fun windowChangeTracksLeavingProtectedApp() {
+    fun unguardedWindowChangeStopsTracking() {
         tracker.record(
-            packageName = "tv.danmaku.bili",
+            packageName = GuardedPageClassifier.WECHAT_PACKAGE,
             isWindowStateChange = true,
-            isProtected = true,
+            pageState = GuardedPageState.GUARDED,
         )
         tracker.record(
-            packageName = "com.miui.home",
+            packageName = GuardedPageClassifier.WECHAT_PACKAGE,
             isWindowStateChange = true,
-            isProtected = false,
+            pageState = GuardedPageState.UNGUARDED,
         )
 
-        assertEquals("com.miui.home", tracker.currentPackage)
+        assertNull(tracker.currentPackage)
+    }
+
+    @Test
+    fun unknownWechatEventDoesNotAccidentallyStopActiveFinderSession() {
+        tracker.record(
+            packageName = GuardedPageClassifier.WECHAT_PACKAGE,
+            isWindowStateChange = true,
+            pageState = GuardedPageState.GUARDED,
+        )
+        tracker.record(
+            packageName = GuardedPageClassifier.WECHAT_PACKAGE,
+            isWindowStateChange = false,
+            pageState = GuardedPageState.UNKNOWN,
+        )
+
+        assertEquals(GuardedPageClassifier.WECHAT_PACKAGE, tracker.currentPackage)
     }
 
     @Test
@@ -55,7 +71,7 @@ class ForegroundEventTrackerTest {
         tracker.record(
             packageName = "tv.danmaku.bili",
             isWindowStateChange = true,
-            isProtected = true,
+            pageState = GuardedPageState.GUARDED,
         )
 
         tracker.clear()

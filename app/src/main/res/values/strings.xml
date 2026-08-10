@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">屏幕平衡</string>
     <string name="accessibility_service_label">屏幕平衡使用守护</string>
-    <string name="accessibility_service_description">监测所选应用的连续前台使用时间；达到自定义上限后返回桌面，并在冷静期内拦截再次打开。</string>
+    <string name="accessibility_service_description">在后台监测所选应用；微信仅监测视频号页面。达到上限后返回桌面，并在冷静期内拦截对应受限页面。</string>
 </resources>

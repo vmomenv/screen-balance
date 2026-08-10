@@ -17,6 +17,7 @@ class FocusGuardAccessibilityService : AccessibilityService() {
     private val preferences by lazy { FocusGuardPreferences(this) }
     private val policy = FocusSessionPolicy()
     private val appTerminator by lazy { ProtectedAppTerminator(this) }
+    private val guardDaemonClient by lazy { GuardDaemonClient(this) }
 
     private var session = FocusSession()
     private var receiverRegistered = false
@@ -52,8 +53,10 @@ class FocusGuardAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        startForeground(GuardNotification.ID, GuardNotification.create(this))
         registerScreenReceiver()
         appTerminator.start()
+        guardDaemonClient.start()
         foregroundTracker.clear()
         resetSession()
         mainHandler.removeCallbacks(monitorRunnable)
@@ -62,29 +65,40 @@ class FocusGuardAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val packageName = event.packageName?.toString() ?: return
-        val isProtected = preferences.isProtected(packageName)
+        val pageState = GuardedPageClassifier.classify(
+            packageName = packageName,
+            className = event.className?.toString(),
+            isPackageSelected = preferences.isProtected(packageName),
+        )
+        val isWindowStateChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         foregroundTracker.record(
             packageName = packageName,
-            isWindowStateChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
-            isProtected = isProtected,
+            isWindowStateChange = isWindowStateChange,
+            pageState = pageState,
         )
         val nowMillis = System.currentTimeMillis()
         if (
             preferences.isGuardEnabled() &&
             !preferences.isTemporaryPassActive(nowMillis) &&
             preferences.cooldownUntilMillis() > nowMillis &&
-            isProtected
+            pageState == GuardedPageState.GUARDED
         ) {
             foregroundTracker.clear()
             performGlobalAction(GLOBAL_ACTION_HOME)
-            sweepRunningProtectedApps(nowMillis, force = true)
+            sweepRunningProtectedApps(
+                nowMillis = nowMillis,
+                force = true,
+                packages = setOf(packageName),
+            )
         }
     }
 
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
         mainHandler.removeCallbacks(monitorRunnable)
+        guardDaemonClient.stop()
         appTerminator.stop()
         foregroundTracker.clear()
         resetSession()
@@ -97,6 +111,7 @@ class FocusGuardAccessibilityService : AccessibilityService() {
 
     private fun monitorApps() {
         val nowMillis = System.currentTimeMillis()
+        guardDaemonClient.syncConfiguration()
         if (!preferences.isGuardEnabled() || preferences.isTemporaryPassActive(nowMillis)) {
             resetSession()
             return
@@ -152,20 +167,26 @@ class FocusGuardAccessibilityService : AccessibilityService() {
             "${GuardDuration.format(preferences.guardDurationMillis())}已到，正在强制停止受限应用",
             Toast.LENGTH_SHORT,
         ).show()
-        sweepRunningProtectedApps(nowMillis, force = true, fallbackPackage = timedOutPackage)
+        sweepRunningProtectedApps(
+            nowMillis = nowMillis,
+            force = true,
+            fallbackPackage = timedOutPackage,
+            packages = setOf(timedOutPackage),
+        )
     }
 
     private fun sweepRunningProtectedApps(
         nowMillis: Long,
         force: Boolean = false,
         fallbackPackage: String? = null,
+        packages: Set<String> = preferences.protectedPackages(),
     ) {
         if (!force && nowMillis - lastBackgroundSweepAtMillis < BACKGROUND_SWEEP_INTERVAL_MILLIS) {
             return
         }
         lastBackgroundSweepAtMillis = nowMillis
 
-        appTerminator.forceStopRunning(preferences.protectedPackages()) { result ->
+        appTerminator.forceStopRunning(packages) { result ->
             when (result) {
                 is TerminationResult.Stopped -> {
                     if (result.packageNames.isNotEmpty()) {

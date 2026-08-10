@@ -7,10 +7,14 @@ class ForegroundEventTracker {
     fun record(
         packageName: String,
         isWindowStateChange: Boolean,
-        isProtected: Boolean,
+        pageState: GuardedPageState,
     ) {
-        if (isProtected || isWindowStateChange) {
-            currentPackage = packageName
+        when (pageState) {
+            GuardedPageState.GUARDED -> currentPackage = packageName
+            GuardedPageState.UNGUARDED -> {
+                if (isWindowStateChange) currentPackage = null
+            }
+            GuardedPageState.UNKNOWN -> Unit
         }
     }
 
