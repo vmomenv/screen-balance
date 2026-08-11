@@ -2,16 +2,18 @@ package io.momen.screenbalance
 
 import android.content.Context
 
-data class TargetApp(
+data class RecommendedApp(
     val label: String,
     val packageName: String,
 )
 
 class FocusGuardPreferences(context: Context) {
-    private val store = context.applicationContext.getSharedPreferences(
+    private val applicationContext = context.applicationContext
+    private val store = applicationContext.getSharedPreferences(
         PREFERENCES_NAME,
         Context.MODE_PRIVATE,
     )
+    private val installedAppCatalog = InstalledAppCatalog(applicationContext)
 
     fun isGuardEnabled(): Boolean = store.getBoolean(KEY_GUARD_ENABLED, true)
 
@@ -29,17 +31,28 @@ class FocusGuardPreferences(context: Context) {
     }
 
 
-    fun protectedPackages(): Set<String> = enabledTargetPackages()
+    fun protectedPackages(): Set<String> = selectedPackages()
 
-    fun isProtected(packageName: String): Boolean = protectedPackages().contains(packageName)
+    fun customProtectedPackages(): Set<String> = ProtectedAppSelection.customPackages(
+        selectedPackages = selectedPackages(),
+        recommendedPackages = RECOMMENDED_PACKAGES,
+    )
+
+    fun isProtected(packageName: String): Boolean = packageName in selectedPackages()
 
     fun setProtected(packageName: String, protected: Boolean) {
-        val selected = enabledTargetPackages().toMutableSet()
-        if (protected) {
-            selected += packageName
-        } else {
-            selected -= packageName
-        }
+        ProtectedAppSelection.requireValidPackageName(packageName)
+        val selected = selectedPackages().toMutableSet()
+        if (protected) selected += packageName else selected -= packageName
+        store.edit().putStringSet(KEY_TARGET_PACKAGES, selected).apply()
+    }
+
+    fun replaceCustomProtectedPackages(packageNames: Set<String>) {
+        val selected = ProtectedAppSelection.replaceCustomPackages(
+            currentPackages = selectedPackages(),
+            recommendedPackages = RECOMMENDED_PACKAGES,
+            customPackages = packageNames,
+        )
         store.edit().putStringSet(KEY_TARGET_PACKAGES, selected).apply()
     }
 
@@ -77,25 +90,29 @@ class FocusGuardPreferences(context: Context) {
     }
 
     fun labelFor(packageName: String): String =
-        TARGET_APPS.firstOrNull { it.packageName == packageName }?.label ?: "受限应用"
+        RECOMMENDED_APPS.firstOrNull { it.packageName == packageName }?.label
+            ?: installedAppCatalog.labelForPackage(packageName)
+            ?: packageName
 
-    private fun enabledTargetPackages(): Set<String> =
+    private fun selectedPackages(): Set<String> =
         store.getStringSet(KEY_TARGET_PACKAGES, null)?.toSet()
-            ?: TARGET_APPS.mapTo(linkedSetOf()) { it.packageName }
+            ?: RECOMMENDED_PACKAGES
 
     companion object {
         const val COOLDOWN_MILLIS = 5 * 60 * 1_000L
         const val TEMPORARY_PASS_MINUTES = 10
 
-        val TARGET_APPS = listOf(
-            TargetApp("抖音", "com.ss.android.ugc.aweme"),
-            TargetApp("抖音极速版", "com.ss.android.ugc.aweme.lite"),
-            TargetApp("哔哩哔哩", "tv.danmaku.bili"),
-            TargetApp("知乎", "com.zhihu.android"),
-            TargetApp("YouTube", "com.google.android.youtube"),
-            TargetApp("Instagram", "com.instagram.android"),
-            TargetApp("微信视频号（不限制聊天/扫码/付款）", "com.tencent.mm"),
+        val RECOMMENDED_APPS = listOf(
+            RecommendedApp("抖音", "com.ss.android.ugc.aweme"),
+            RecommendedApp("抖音极速版", "com.ss.android.ugc.aweme.lite"),
+            RecommendedApp("哔哩哔哩", "tv.danmaku.bili"),
+            RecommendedApp("知乎", "com.zhihu.android"),
+            RecommendedApp("YouTube", "com.google.android.youtube"),
+            RecommendedApp("Instagram", "com.instagram.android"),
+            RecommendedApp("微信视频号（不限制聊天/扫码/付款）", "com.tencent.mm"),
         )
+        val RECOMMENDED_PACKAGES = RECOMMENDED_APPS
+            .mapTo(linkedSetOf()) { app -> app.packageName }
 
         private const val PREFERENCES_NAME = "focus_guard"
         private const val KEY_GUARD_ENABLED = "guard_enabled"

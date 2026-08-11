@@ -31,6 +31,7 @@ class MainActivity : Activity() {
     private lateinit var endPassButton: Button
     private lateinit var durationLabel: TextView
     private lateinit var durationSlider: SeekBar
+    private lateinit var customAppsContainer: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -148,10 +149,14 @@ class MainActivity : Activity() {
                     addView(card().apply {
                         addView(sectionTitle("受限应用"))
                         addView(
-                            bodyView("这些应用共用连续使用计时；微信仅在识别到视频号页面时计时，聊天、扫码和付款不受限制。"),
-                            layoutParams(top = 8, bottom = 8),
+                            bodyView(
+                                "所有勾选应用共用连续使用计时；同一应用的双开也会受限。"
+                                    + "微信仅在视频号页面计时，聊天、扫码和付款不受限制。",
+                            ),
+                            layoutParams(top = 8, bottom = 12),
                         )
-                        FocusGuardPreferences.TARGET_APPS.forEach { target ->
+                        addView(sectionTitle("推荐受限应用"))
+                        FocusGuardPreferences.RECOMMENDED_APPS.forEach { target ->
                             val checkBox = CheckBox(this@MainActivity).apply {
                                 text = target.label
                                 textSize = 16f
@@ -162,6 +167,20 @@ class MainActivity : Activity() {
                             targetChecks[target.packageName] = checkBox
                             addView(checkBox)
                         }
+
+                        addView(sectionTitle("其他受限应用"), layoutParams(top = 14))
+                        customAppsContainer = LinearLayout(this@MainActivity).apply {
+                            orientation = LinearLayout.VERTICAL
+                        }
+                        addView(customAppsContainer, layoutParams(top = 6))
+                        addView(
+                            secondaryButton("从手机选择应用") {
+                                startActivity(
+                                    Intent(this@MainActivity, AppSelectionActivity::class.java),
+                                )
+                            },
+                            layoutParams(top = 10),
+                        )
                     }, layoutParams(bottom = 16))
 
                     addView(card().apply {
@@ -207,6 +226,34 @@ class MainActivity : Activity() {
 
         targetChecks.forEach { (packageName, checkBox) ->
             checkBox.isChecked = preferences.isProtected(packageName)
+        }
+        refreshCustomApps()
+    }
+
+    private fun refreshCustomApps() {
+        customAppsContainer.removeAllViews()
+        val selectedApps = preferences.customProtectedPackages()
+            .map { packageName -> packageName to preferences.labelFor(packageName) }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { (_, label) -> label })
+        if (selectedApps.isEmpty()) {
+            customAppsContainer.addView(bodyView("尚未选择其他应用。"))
+            return
+        }
+
+        selectedApps.forEach { (packageName, label) ->
+            customAppsContainer.addView(
+                CheckBox(this).apply {
+                    text = "$label\n$packageName"
+                    textSize = 16f
+                    isChecked = true
+                    setOnCheckedChangeListener { _, checked ->
+                        if (!checked) {
+                            preferences.setProtected(packageName, false)
+                            refreshCustomApps()
+                        }
+                    }
+                },
+            )
         }
     }
 
