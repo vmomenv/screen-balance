@@ -1,10 +1,12 @@
 package io.momen.screenbalance
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
@@ -130,6 +132,23 @@ class MainActivity : Activity() {
                         addView(sectionTitle("扫码、付款等必要操作"))
                         passStatus = bodyView("")
                         addView(passStatus, layoutParams(top = 8))
+                        addView(sectionTitle("快捷扫码"), layoutParams(top = 16))
+                        addView(
+                            bodyView("点击后自动临时放行 1 分钟，并直接打开对应应用的扫码页。"),
+                            layoutParams(top = 6),
+                        )
+                        addView(
+                            secondaryButton("抖音扫一扫") {
+                                openScanShortcut(DOUYIN_PACKAGE, DOUYIN_SCAN_URI, "抖音")
+                            },
+                            layoutParams(top = 10),
+                        )
+                        addView(
+                            secondaryButton("哔哩哔哩扫一扫") {
+                                openScanShortcut(BILIBILI_PACKAGE, BILIBILI_SCAN_URI, "哔哩哔哩")
+                            },
+                            layoutParams(top = 8),
+                        )
                         passDurationLabel = sectionTitle("")
                         addView(passDurationLabel, layoutParams(top = 14))
                         passDurationSlider = SeekBar(this@MainActivity).apply {
@@ -252,6 +271,25 @@ class MainActivity : Activity() {
         refreshCustomApps()
     }
 
+    private fun openScanShortcut(packageName: String, uri: String, label: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri)).apply {
+            setPackage(packageName)
+        }
+        if (intent.resolveActivity(packageManager) == null) {
+            Toast.makeText(this, "未安装$label", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        preferences.startTemporaryPass(TemporaryPassDuration.MIN_MINUTES)
+        try {
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            preferences.endTemporaryPass()
+            Toast.makeText(this, "无法打开$label 扫码页", Toast.LENGTH_SHORT).show()
+        }
+        refresh()
+    }
+
     private fun updatePassDuration(minutes: Int) {
         passDurationLabel.text = "放行时长：${TemporaryPassDuration.format(minutes)}"
         startPassButton.text = "临时放行 ${TemporaryPassDuration.format(minutes)}"
@@ -372,6 +410,11 @@ class MainActivity : Activity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val DOUYIN_PACKAGE = "com.ss.android.ugc.aweme"
+        const val DOUYIN_SCAN_URI = "snssdk1128://scan"
+        const val BILIBILI_PACKAGE = "tv.danmaku.bili"
+        const val BILIBILI_SCAN_URI = "bilibili://qrscan"
+
         val COLOR_BACKGROUND = Color.parseColor("#F7F8FA")
         val COLOR_SURFACE = Color.WHITE
         val COLOR_INK = Color.parseColor("#1A1C1E")
