@@ -1,16 +1,18 @@
 <resources>
-    <style name="Theme.ScreenBalance" parent="@android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.ScreenBalance" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/accent</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@color/screen_background</item>
         <item name="android:navigationBarColor">@color/screen_background</item>
+        <item name="android:windowBackground">@color/screen_background</item>
     </style>
 
-    <style name="Theme.ScreenBalance.Block" parent="@android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.ScreenBalance.Block" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#FF10131A</item>
-        <item name="android:navigationBarColor">#FF10131A</item>
+        <item name="android:statusBarColor">@color/screen_background</item>
+        <item name="android:navigationBarColor">@color/screen_background</item>
+        <item name="android:windowBackground">@color/screen_background</item>
     </style>
 </resources>

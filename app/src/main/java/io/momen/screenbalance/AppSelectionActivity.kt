@@ -2,15 +2,11 @@ package io.momen.screenbalance
 
 import android.app.Activity
 import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -26,32 +22,53 @@ class AppSelectionActivity : Activity() {
     private lateinit var appList: LinearLayout
     private lateinit var searchInput: EditText
     private lateinit var progress: ProgressBar
+    private lateinit var selectionSummary: TextView
     private var installedApps = emptyList<InstalledApp>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         selectedPackages += preferences.customProtectedPackages()
+        LiquidGlass.applyWindowChrome(this)
         setContentView(createContent())
         loadApps()
     }
 
-    private fun createContent(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setBackgroundColor(COLOR_BACKGROUND)
-        setPadding(dp(20), dp(20), dp(20), dp(20))
+    private fun createContent(): View {
+        val screen = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(22), dp(18), dp(24))
+        }
+        val intro = LiquidGlass.glassPanel(this, 22).apply {
+            addView(LiquidGlass.eyebrow(this@AppSelectionActivity, "APP LIBRARY  /  选择范围"))
+            addView(
+                LiquidGlass.heading(this@AppSelectionActivity, "选择其他受限应用", 26f),
+                layoutParams(top = 4),
+            )
+            addView(
+                LiquidGlass.body(
+                    this@AppSelectionActivity,
+                    "从手机已安装且可启动的应用中选择。推荐应用仍在主界面单独勾选。",
+                ),
+                layoutParams(top = 6),
+            )
+            selectionSummary = LiquidGlass.pill(this@AppSelectionActivity, "0 个应用已加入守护")
+            addView(selectionSummary, layoutParams(top = 14))
+        }
+        screen.addView(intro, layoutParams(bottom = 12))
 
-        addView(titleView("选择其他受限应用"))
-        addView(
-            bodyView("从手机已安装且可启动的应用中选择。推荐应用仍在主界面单独勾选。"),
-            layoutParams(top = 6, bottom = 14),
-        )
-        searchInput = EditText(this@AppSelectionActivity).apply {
+        searchInput = EditText(this).apply {
             hint = "搜索应用名称或包名"
             isSingleLine = true
-            setTextColor(COLOR_INK)
-            setHintTextColor(COLOR_MUTED)
-            background = roundedBackground(Color.WHITE, dp(12).toFloat())
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setTextColor(LiquidGlass.INK)
+            setHintTextColor(LiquidGlass.MUTED)
+            textSize = 15f
+            background = LiquidGlass.pillBackground(
+                this@AppSelectionActivity,
+                Color.argb(56, 255, 255, 255),
+                LiquidGlass.BORDER,
+            )
+            setPadding(dp(16), dp(4), dp(16), dp(4))
+            minHeight = dp(52)
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(
                     text: CharSequence?,
@@ -72,51 +89,37 @@ class AppSelectionActivity : Activity() {
                 override fun afterTextChanged(text: Editable?) = Unit
             })
         }
-        addView(searchInput)
+        screen.addView(searchInput, layoutParams(bottom = 8))
 
-        progress = ProgressBar(this@AppSelectionActivity).apply {
+        progress = ProgressBar(this).apply {
             isIndeterminate = true
         }
-        addView(
-            progress,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                gravity = Gravity.CENTER_HORIZONTAL
-                topMargin = dp(24)
-            },
-        )
+        screen.addView(progress, layoutParams(top = 2, bottom = 2))
 
-        appList = LinearLayout(this@AppSelectionActivity).apply {
+        appList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
-        addView(
-            ScrollView(this@AppSelectionActivity).apply {
+        screen.addView(
+            ScrollView(this).apply {
+                isFillViewport = true
                 addView(appList)
             },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f,
-            ).apply { topMargin = dp(12) },
+            ),
         )
 
-        addView(
-            Button(this@AppSelectionActivity).apply {
-                text = "保存选择"
-                setTextColor(Color.WHITE)
-                textSize = 16f
-                isAllCaps = false
-                background = roundedBackground(COLOR_ACCENT, dp(12).toFloat())
-                setOnClickListener {
-                    preferences.replaceCustomProtectedPackages(selectedPackages)
-                    setResult(RESULT_OK)
-                    finish()
-                }
+        screen.addView(
+            LiquidGlass.primaryButton(this, "保存选择") {
+                preferences.replaceCustomProtectedPackages(selectedPackages)
+                setResult(RESULT_OK)
+                finish()
             },
             layoutParams(top = 12),
         )
+        return LiquidGlass.root(this, screen)
     }
 
     private fun loadApps() {
@@ -158,54 +161,49 @@ class AppSelectionActivity : Activity() {
                 app.packageName.contains(normalizedQuery, ignoreCase = true)
         }
         if (visibleApps.isEmpty() && installedApps.isNotEmpty()) {
-            appList.addView(bodyView("没有匹配的应用"), layoutParams(top = 16))
+            appList.addView(
+                LiquidGlass.body(this, "没有匹配的应用").apply {
+                    setPadding(dp(4), dp(18), dp(4), dp(18))
+                },
+            )
             return
         }
         visibleApps.forEach { app ->
             val checkBox = CheckBox(this).apply {
-                text = "${app.label}\n${app.packageName}"
-                textSize = 16f
-                setTextColor(COLOR_INK)
+                text = app.label + System.lineSeparator() + app.packageName
+                textSize = 15f
+                setTextColor(LiquidGlass.INK)
+                buttonTintList = android.content.res.ColorStateList.valueOf(LiquidGlass.ACCENT)
                 isChecked = app.packageName in selectedPackages
+                setPadding(0, dp(4), 0, dp(4))
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedPackages += app.packageName
                     else selectedPackages -= app.packageName
+                    updateSummary()
                 }
             }
-            appList.addView(checkBox, layoutParams(bottom = 4))
+            appList.addView(
+                LiquidGlass.glassPanel(this, 12).apply {
+                    addView(checkBox)
+                },
+                layoutParams(bottom = 8),
+            )
+        }
+        updateSummary()
+    }
+
+    private fun updateSummary() {
+        if (::selectionSummary.isInitialized) {
+            selectionSummary.text = "${selectedPackages.size} 个应用已加入守护"
         }
     }
 
-    private fun titleView(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 26f
-        typeface = Typeface.DEFAULT_BOLD
-        setTextColor(COLOR_INK)
-    }
+    private fun layoutParams(
+        top: Int = 0,
+        bottom: Int = 0,
+        start: Int = 0,
+        end: Int = 0,
+    ) = LiquidGlass.layoutParams(this, top, bottom, start, end)
 
-    private fun bodyView(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 15f
-        setTextColor(COLOR_MUTED)
-    }
-
-    private fun layoutParams(top: Int = 0, bottom: Int = 0) = LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT,
-    ).apply { setMargins(0, dp(top), 0, dp(bottom)) }
-
-    private fun roundedBackground(color: Int, radius: Float) = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = radius
-        setColor(color)
-    }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-
-    private companion object {
-        val COLOR_BACKGROUND = Color.parseColor("#F7F8FA")
-        val COLOR_INK = Color.parseColor("#1A1C1E")
-        val COLOR_MUTED = Color.parseColor("#5D6470")
-        val COLOR_ACCENT = Color.parseColor("#2457D6")
-    }
+    private fun dp(value: Int): Int = LiquidGlass.dp(this, value)
 }

@@ -2,15 +2,11 @@ package io.momen.screenbalance
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import kotlin.math.ceil
@@ -42,48 +38,47 @@ class BlockActivity : Activity() {
             EXTRA_GUARD_DURATION,
             GuardDuration.DEFAULT_MILLIS,
         )
+        LiquidGlass.applyWindowChrome(this)
 
-        window.statusBarColor = COLOR_DARK
-        window.navigationBarColor = COLOR_DARK
-        setContentView(
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+        val card = LiquidGlass.glassPanel(this, 28).apply {
+            addView(LiquidGlass.eyebrow(this@BlockActivity, "COOLDOWN  /  先离开屏幕"))
+            addView(
+                LiquidGlass.heading(this@BlockActivity, "本次使用已结束", 31f),
+                layoutParams(top = 8),
+            )
+            addView(
+                LiquidGlass.body(
+                    this@BlockActivity,
+                    appLabel + " 已连续使用 " + GuardDuration.format(guardDurationMillis) +
+                        System.lineSeparator() + "先离开屏幕，稍后再回来。",
+                ),
+                layoutParams(top = 12),
+            )
+            countdown = LiquidGlass.heading(this@BlockActivity, "", 22f).apply {
+                setTextColor(LiquidGlass.WARNING)
                 gravity = Gravity.CENTER
-                setPadding(dp(28), dp(28), dp(28), dp(28))
-                setBackgroundColor(COLOR_DARK)
-
-                addView(TextView(this@BlockActivity).apply {
-                    text = "本次使用已结束"
-                    setTextColor(Color.WHITE)
-                    textSize = 30f
-                    gravity = Gravity.CENTER
-                    typeface = Typeface.DEFAULT_BOLD
-                })
-                addView(TextView(this@BlockActivity).apply {
-                    text = "$appLabel 已连续使用 ${GuardDuration.format(guardDurationMillis)}。\n先离开屏幕，稍后再回来。"
-                    setTextColor(COLOR_SUBTLE)
-                    textSize = 18f
-                    gravity = Gravity.CENTER
-                    setLineSpacing(dp(5).toFloat(), 1f)
-                }, params(top = 18))
-                countdown = TextView(this@BlockActivity).apply {
-                    setTextColor(COLOR_NOTICE)
-                    textSize = 18f
-                    gravity = Gravity.CENTER
-                    typeface = Typeface.DEFAULT_BOLD
-                }
-                addView(countdown, params(top = 24))
-                addView(Button(this@BlockActivity).apply {
-                    text = "回到桌面"
-                    isAllCaps = false
-                    textSize = 17f
-                    setTextColor(COLOR_DARK)
-                    background = roundedBackground(Color.WHITE, dp(12).toFloat())
-                    setPadding(dp(18), dp(10), dp(18), dp(10))
-                    setOnClickListener { goHome() }
-                }, params(top = 28))
-            },
-        )
+            }
+            addView(countdown, layoutParams(top = 22))
+            addView(
+                LiquidGlass.primaryButton(this@BlockActivity, "回到桌面") {
+                    goHome()
+                },
+                layoutParams(top = 26),
+            )
+        }
+        val screen = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(18), dp(24), dp(18), dp(24))
+            addView(
+                card,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+        }
+        setContentView(LiquidGlass.root(this, screen))
     }
 
     override fun onStart() {
@@ -109,28 +104,18 @@ class BlockActivity : Activity() {
         finish()
     }
 
-    private fun params(top: Int = 0) = LinearLayout.LayoutParams(
+    private fun layoutParams(top: Int = 0) = LinearLayout.LayoutParams(
         ViewGroup.LayoutParams.MATCH_PARENT,
         ViewGroup.LayoutParams.WRAP_CONTENT,
     ).apply {
-        setMargins(0, dp(top), 0, 0)
+        topMargin = dp(top)
     }
 
-    private fun roundedBackground(color: Int, radius: Float) = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = radius
-        setColor(color)
-    }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int): Int = LiquidGlass.dp(this, value)
 
     companion object {
         const val EXTRA_APP_LABEL = "app_label"
         const val EXTRA_BLOCKED_UNTIL = "blocked_until"
         const val EXTRA_GUARD_DURATION = "guard_duration"
-
-        private val COLOR_DARK = Color.parseColor("#10131A")
-        private val COLOR_SUBTLE = Color.parseColor("#CDD4E2")
-        private val COLOR_NOTICE = Color.parseColor("#9DC1FF")
     }
 }
