@@ -57,10 +57,24 @@ class FocusGuardPreferences(context: Context) {
     }
 
     fun startTemporaryPass(minutes: Int, nowMillis: Long = System.currentTimeMillis()): Long {
-        require(minutes > 0)
+        require(TemporaryPassDuration.isSelectable(minutes))
         val untilMillis = nowMillis + minutes * 60 * 1_000L
         store.edit().putLong(KEY_TEMPORARY_PASS_UNTIL, untilMillis).apply()
         return untilMillis
+    }
+
+    fun temporaryPassMinutes(): Int {
+        val storedMinutes = store.getInt(
+            KEY_TEMPORARY_PASS_MINUTES,
+            TemporaryPassDuration.DEFAULT_MINUTES,
+        )
+        return storedMinutes.takeIf(TemporaryPassDuration::isSelectable)
+            ?: TemporaryPassDuration.DEFAULT_MINUTES
+    }
+
+    fun setTemporaryPassMinutes(minutes: Int) {
+        require(TemporaryPassDuration.isSelectable(minutes))
+        store.edit().putInt(KEY_TEMPORARY_PASS_MINUTES, minutes).apply()
     }
 
     fun endTemporaryPass() {
@@ -100,7 +114,6 @@ class FocusGuardPreferences(context: Context) {
 
     companion object {
         const val COOLDOWN_MILLIS = 5 * 60 * 1_000L
-        const val TEMPORARY_PASS_MINUTES = 10
 
         val RECOMMENDED_APPS = listOf(
             RecommendedApp("抖音", "com.ss.android.ugc.aweme"),
@@ -119,6 +132,7 @@ class FocusGuardPreferences(context: Context) {
         private const val KEY_GUARD_DURATION_MILLIS = "guard_duration_millis"
         private const val KEY_TARGET_PACKAGES = "target_packages"
         private const val KEY_TEMPORARY_PASS_UNTIL = "temporary_pass_until"
+        private const val KEY_TEMPORARY_PASS_MINUTES = "temporary_pass_minutes"
         private const val KEY_COOLDOWN_UNTIL = "cooldown_until"
     }
 }

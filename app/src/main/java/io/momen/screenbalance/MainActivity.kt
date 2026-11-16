@@ -28,6 +28,9 @@ class MainActivity : Activity() {
     private lateinit var accessibilityStatus: TextView
     private lateinit var shizukuStatus: TextView
     private lateinit var passStatus: TextView
+    private lateinit var passDurationLabel: TextView
+    private lateinit var passDurationSlider: SeekBar
+    private lateinit var startPassButton: Button
     private lateinit var endPassButton: Button
     private lateinit var durationLabel: TextView
     private lateinit var durationSlider: SeekBar
@@ -127,18 +130,34 @@ class MainActivity : Activity() {
                         addView(sectionTitle("扫码、付款等必要操作"))
                         passStatus = bodyView("")
                         addView(passStatus, layoutParams(top = 8))
-                        addView(
-                            primaryButton("临时放行 10 分钟") {
-                                preferences.startTemporaryPass(FocusGuardPreferences.TEMPORARY_PASS_MINUTES)
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "已临时放行 10 分钟",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                refresh()
-                            },
-                            layoutParams(top = 12),
-                        )
+                        passDurationLabel = sectionTitle("")
+                        addView(passDurationLabel, layoutParams(top = 14))
+                        passDurationSlider = SeekBar(this@MainActivity).apply {
+                            max = TemporaryPassDuration.MAX_MINUTES - TemporaryPassDuration.MIN_MINUTES
+                            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                                override fun onProgressChanged(
+                                    seekBar: SeekBar,
+                                    progress: Int,
+                                    fromUser: Boolean,
+                                ) {
+                                    val minutes = TemporaryPassDuration.MIN_MINUTES + progress
+                                    updatePassDuration(minutes)
+                                    if (fromUser) {
+                                        preferences.setTemporaryPassMinutes(minutes)
+                                    }
+                                }
+
+                                override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
+
+                                override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
+                            })
+                        }
+                        addView(passDurationSlider, layoutParams(top = 6))
+                        addView(bodyView("范围：1 至 10 分钟，每格 1 分钟。"))
+                        startPassButton = primaryButton("临时放行") {
+                            startTemporaryPass()
+                        }
+                        addView(startPassButton, layoutParams(top = 12))
                         endPassButton = secondaryButton("立即恢复守护") {
                             preferences.endTemporaryPass()
                             refresh()
@@ -216,6 +235,9 @@ class MainActivity : Activity() {
             ShizukuStatus.NOT_INSTALLED -> "Shizuku：未安装，无法强制停止其他应用。"
         }
 
+        val passMinutes = preferences.temporaryPassMinutes()
+        passDurationSlider.progress = passMinutes - TemporaryPassDuration.MIN_MINUTES
+        updatePassDuration(passMinutes)
         val remainingPass = preferences.temporaryPassRemainingMillis()
         passStatus.text = if (remainingPass > 0L) {
             "当前已放行，剩余 ${ceil(remainingPass / 60_000.0).toInt()} 分钟。"
@@ -228,6 +250,22 @@ class MainActivity : Activity() {
             checkBox.isChecked = preferences.isProtected(packageName)
         }
         refreshCustomApps()
+    }
+
+    private fun updatePassDuration(minutes: Int) {
+        passDurationLabel.text = "放行时长：${TemporaryPassDuration.format(minutes)}"
+        startPassButton.text = "临时放行 ${TemporaryPassDuration.format(minutes)}"
+    }
+
+    private fun startTemporaryPass() {
+        val minutes = preferences.temporaryPassMinutes()
+        preferences.startTemporaryPass(minutes)
+        Toast.makeText(
+            this,
+            "已临时放行 ${TemporaryPassDuration.format(minutes)}",
+            Toast.LENGTH_SHORT,
+        ).show()
+        refresh()
     }
 
     private fun refreshCustomApps() {
